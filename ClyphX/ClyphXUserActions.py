@@ -90,7 +90,8 @@ class ClyphXUserActions(ControlSurfaceComponent):
         self._action_dict = {#<--DO NOTE REMOVE THIS
             'EX_ACTION_1' : 'example_action_one',
             'EX_ACTION_2' : 'example_action_two',
-            'LOOP_CURRENT_SECTION' : 'loop_current_section'
+            'LOOP_CURRENT_SECTION' : 'loop_current_section',
+            'JUMP_TO_CUE_NAME': 'jump_to_cue_with_string'
             }#<--DO NOTE REMOVE THIS
         
         """ The parent ClyphX script.  Through this you can access things such as the log_message function (writes to Live's Log.txt file), 
@@ -165,6 +166,46 @@ class ClyphXUserActions(ControlSurfaceComponent):
 
         # Turn on the looper
         self.song().loop = True
+
+    def jump_to_cue_with_string(self, track, args):
+        """ Jump to the previous/next cue that matches the given input string.
+        Takes two arguments:
+        - > or < - Jump forwards or backwards
+        - matchStr - The string to match in the cue name """
+
+        # Validate arguments
+        argList = args.strip().split(' ')
+        if (len(argList) == 1):
+            argList = ['>', argList[0]]
+        elif (len(argList) != 2):
+            self._parent.log_message('jump_to_cue_with_string - Invalid args: {}'.format(argList))
+
+        # Retrieve the nearest cues that contain the string
+        leftCue, rightCue = self.helper_find_locators_with_string(argList[1])
+
+        # Based on the direction, pick a cue to jump to
+        if (argList[0] == '>' and rightCue != None):
+            rightCue.jump()
+        elif (argList[0] == '<' and leftCue != None):
+            leftCue.jump()
+
+    def helper_find_locators_with_string(self, matchStr):
+        """ A helper function to determine the nearest cues that contain a given string """
+
+        # Get current song position
+        currentPosition = self.song().current_song_time
+
+        # Determine the nearest cues to the left and right that contain the string
+        leftCue = None
+        rightCue = None
+        for cue in self.song().cue_points:
+            if (matchStr.lower() in self._parent.get_name(cue.name).lower()):
+                if (cue.time < currentPosition and (leftCue == None or cue.time > leftCue.time)):
+                    leftCue = cue
+                elif (cue.time > currentPosition and (rightCue == None or cue.time < rightCue.time)):
+                    rightCue = cue
+
+        return leftCue, rightCue
 
     def on_track_list_changed(self):
         """ Called by the control surface if tracks are added/removed, to be overridden """
