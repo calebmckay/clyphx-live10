@@ -89,7 +89,8 @@ class ClyphXUserActions(ControlSurfaceComponent):
         Except for the last entry, every entry should be followed by a comma.  You can remove the 2 example entries from the dictionary if you wish. """
         self._action_dict = {#<--DO NOTE REMOVE THIS
             'EX_ACTION_1' : 'example_action_one',
-            'EX_ACTION_2' : 'example_action_two'
+            'EX_ACTION_2' : 'example_action_two',
+            'LOOP_CURRENT_SECTION' : 'loop_current_section'
             }#<--DO NOTE REMOVE THIS
         
         """ The parent ClyphX script.  Through this you can access things such as the log_message function (writes to Live's Log.txt file), 
@@ -137,7 +138,33 @@ class ClyphXUserActions(ControlSurfaceComponent):
                 track.mixer_device.volume.value = self.song().master_track.mixer_device.volume.value
             if not args or 'PAN' in args:
                 track.mixer_device.panning.value = self.song().master_track.mixer_device.panning.value
-    
+
+    def loop_current_section(self, track, args):
+        """ Loop the current section between two locators.
+        This will set the arranger loop area to the area between the two locators and turn the looper on. """
+        # Get current song position
+        currentPosition = self.song().current_song_time
+
+        # Determine the cues to the left and right
+        leftCue = None
+        rightCue = None
+        for cue in self.song().cue_points:
+            if (cue.time < currentPosition and (leftCue == None or cue.time > leftCue.time)):
+                leftCue = cue
+            elif (cue.time > currentPosition and (rightCue == None or cue.time < rightCue.time)):
+                rightCue = cue
+
+        # Do nothing if there isn't cues on both sides
+        if (leftCue == None or rightCue == None):
+            self._parent.log_message('DEBUG - not surrounded by cues')
+            return
+
+        # Set the arranger loop area
+        self.song().loop_start = leftCue.time
+        self.song().loop_length = (rightCue.time - leftCue.time)
+
+        # Turn on the looper
+        self.song().loop = True
 
     def on_track_list_changed(self):
         """ Called by the control surface if tracks are added/removed, to be overridden """
